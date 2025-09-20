@@ -6,6 +6,7 @@ from PyQt5.QtGui import QColor, QBrush, QPainter
 from PyQt5.QtCore import Qt
 import random
 import time
+import os
 from pipSetInvalid import set_invalid
 from pipCreateGrid import create_grid
 from pipDominoSolver import solve_domino
@@ -90,6 +91,9 @@ class DominoDialog(QDialog):
         except ValueError:
             self.feedback_label.setText("Invalid input! Enter two numbers separated by a space.")
             self.input_field.clear()
+    
+    def closeEvent(self, event):
+        os._exit(0)
 
 # ------------------- GridSizeDialog -------------------
 class GridSizeDialog(QDialog):
@@ -122,8 +126,11 @@ class GridSizeDialog(QDialog):
         except ValueError:
             self.feedback_label.setText("Invalid input! Enter two positive integers.")
 
+    def closeEvent(self, event):
+        os._exit(0)
+
 # ------------------- GridEditor -------------------
-class GridEditor(QWidget):
+class GridEditor(QDialog):
     def __init__(self, grid):
         super().__init__()
         self.setWindowTitle("Grid Editor")
@@ -141,7 +148,7 @@ class GridEditor(QWidget):
         self.set_grid_button = QPushButton("Set grid")
         self.set_grid_button.setMinimumHeight(40)
         self.set_grid_button.setStyleSheet("font-weight: bold; font-size: 16px; color: black;")
-        self.set_grid_button.clicked.connect(self.close)
+        self.set_grid_button.clicked.connect(self.accept)
         main_layout.addWidget(self.set_grid_button)
         self.setLayout(main_layout)
 
@@ -174,9 +181,12 @@ class GridEditor(QWidget):
 
     def get_toggled_tiles(self):
         return self.toggled_tiles
+    
+    def closeEvent(self, event):
+        os._exit(0)
 
 # ------------------- BoardViewer -------------------
-class BoardViewer(QWidget):
+class BoardViewer(QDialog):
     def __init__(self, grid):
         super().__init__()
         self.setWindowTitle("Board Viewer")
@@ -274,15 +284,7 @@ class BoardViewer(QWidget):
         rule = dialog.textValue()
 
         if rule in ["=", "!="]:
-            dialog = QInputDialog(self)
-            dialog.setWindowTitle("Enter rule value")
-            dialog.setLabelText("Rule value (optional):")
-            dialog.setTextValue("")
-            dialog.setStyleSheet("color: black;")
-            if dialog.exec_() != QInputDialog.Accepted:
-                return
-            value = dialog.textValue()
-            rule_value = None if value.strip() == "" else int(value)
+            rule_value = None
         else:
             while True:
                 dialog = QInputDialog(self)
@@ -324,10 +326,19 @@ class BoardViewer(QWidget):
 
     def finalize_board(self):
         self.finalized_groups = self.groups.copy()
-        self.close()
+        self.accept()
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            self.set_group_button.click()  # simulate button press
+        else:
+            super().keyPressEvent(event)
+    
+    def closeEvent(self, event):
+        os._exit(0)
 
 # ------------------- SolverViewer -------------------
-class SolverViewer(QWidget):
+class SolverViewer(QDialog):
     def __init__(self, grid):
         super().__init__()
         self.setWindowTitle("Solver Viewer")
@@ -341,17 +352,26 @@ class SolverViewer(QWidget):
         self.grid_layout.setSpacing(0)
         self.main_layout.addLayout(self.grid_layout)
 
-        self.solve_button = QPushButton("Solve")
+        # Solve (Visual) button
+        self.solve_button = QPushButton("Solve (Visual)")
         self.solve_button.setMinimumHeight(40)
         self.solve_button.setStyleSheet("font-weight: bold; font-size: 16px; color: black;")
         self.solve_button.clicked.connect(self.start_solve)
         self.main_layout.addWidget(self.solve_button)
+
+        # Solve (Final Only) button
+        self.solve_final_button = QPushButton("Solve (Final Only)")
+        self.solve_final_button.setMinimumHeight(40)
+        self.solve_final_button.setStyleSheet("font-weight: bold; font-size: 16px; color: black;")
+        self.solve_final_button.clicked.connect(self.start_solve_final)
+        self.main_layout.addWidget(self.solve_final_button)
+
         self.setLayout(self.main_layout)
 
         screen_rect = QApplication.primaryScreen().availableGeometry()
         max_width = screen_rect.width() * 0.9
         max_height = screen_rect.height() * 0.9
-        reserved_height = self.solve_button.minimumHeight() + 20
+        reserved_height = self.solve_button.minimumHeight() + self.solve_final_button.minimumHeight() + 20
         available_height = max_height - reserved_height
         tile_width = max_width / self.cols
         tile_height = available_height / self.rows
@@ -385,10 +405,16 @@ class SolverViewer(QWidget):
                 self.tiles[(i, j)].update()
         QApplication.processEvents()
 
-
+    # Visual solve
     def start_solve(self):
         normalized_dominos = set((min(a, b), max(a, b)) for a, b in dominos)
-        solve_domino(self.grid, normalized_dominos, groups, self)
+        solve_domino(self.grid, normalized_dominos, groups, self, solve_visual=True)
+
+    # Non-visual / final-only solve
+    def start_solve_final(self):
+        normalized_dominos = set((min(a, b), max(a, b)) for a, b in dominos)
+        solve_domino(self.grid, normalized_dominos, groups, self, solve_visual=False)
+        self.draw_board()
 
     def highlight_domino(self, coord1, coord2):
         domino_key = frozenset([coord1, coord2])
@@ -403,7 +429,6 @@ class SolverViewer(QWidget):
 
         for coord in [coord1, coord2]:
             self.tiles[coord].set_bg_color(color)
-        self.draw_board()
 
     def clear_domino_highlight(self, coord1, coord2):
         domino_key = frozenset([coord1, coord2])
@@ -413,7 +438,10 @@ class SolverViewer(QWidget):
         for coord in [coord1, coord2]:
             cell = self.grid[coord[0]][coord[1]]
             self.tiles[coord].set_bg_color("#FFFDD0" if cell["valid"] else "white")
-        self.draw_board()
+
+    def closeEvent(self, event):
+        os._exit(0)
+
 
 # ------------------- Main -------------------
 if __name__ == "__main__":
@@ -429,22 +457,18 @@ if __name__ == "__main__":
             grid = create_grid(rows, cols)
 
             grid_editor = GridEditor(grid)
-            grid_editor.show()
-            app.exec_()
+            if grid_editor.exec_() == QDialog.Accepted:
+                toggled_tiles = grid_editor.get_toggled_tiles()
+                set_invalid(grid, toggled_tiles)
 
-            toggled_tiles = grid_editor.get_toggled_tiles()
-            set_invalid(grid, toggled_tiles)
+                board_viewer = BoardViewer(grid)
+                if board_viewer.exec_() == QDialog.Accepted:
+                    groups = board_viewer.finalized_groups
+                    digitDict = countDigits(dominos)
+                    badNumPicker(grid, groups, digitDict)
 
-            board_viewer = BoardViewer(grid)
-            board_viewer.show()
-            app.exec_()
-            groups = board_viewer.finalized_groups
+                    solver_viewer = SolverViewer(grid)
+                    solver_viewer.exec_()
 
-            digitDict = countDigits(dominos)
-            badNumPicker(grid, groups, digitDict)
+    sys.exit(app.exec_())   # ✅ single global event loop
 
-            solver_viewer = SolverViewer(grid)
-            solver_viewer.show()
-            app.exec_()
-
-    sys.exit(app.exec_())

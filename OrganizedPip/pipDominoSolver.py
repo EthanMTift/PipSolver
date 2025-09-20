@@ -3,7 +3,7 @@ from pipEmptySpot import find_empty
 from pipValidateGroups import validate_groups
 from pipValidatePos import validate_pos
 
-def solve_domino(grid, unused_dominos, groups, solver_viewer):
+def solve_domino(grid, unused_dominos, groups, solver_viewer, solve_visual):
     empty = find_empty(grid)
     if not empty:
         return True  # solved
@@ -33,13 +33,14 @@ def solve_domino(grid, unused_dominos, groups, solver_viewer):
                 grid[r][c]['value'] = x
                 grid[r2][c2]['value'] = y
                 solver_viewer.highlight_domino((r, c), (r2, c2))
-                solver_viewer.draw_board()
+                if(solve_visual):
+                    solver_viewer.draw_board()
                 
                 if validate_groups(grid, groups) and validate_pos(grid, r, c, x) and validate_pos(grid, r2, c2, y):
                     
                     unused_dominos.remove((a, b))
 
-                    if solve_domino(grid, unused_dominos, groups, solver_viewer):
+                    if solve_domino(grid, unused_dominos, groups, solver_viewer, solve_visual):
                         return True
 
                     unused_dominos.add((a, b))
@@ -48,7 +49,10 @@ def solve_domino(grid, unused_dominos, groups, solver_viewer):
                 grid[r][c]['value'] = None
                 grid[r2][c2]['value'] = None
                 solver_viewer.clear_domino_highlight((r, c), (r2, c2))
-                solver_viewer.draw_board()
+                if(solve_visual):
+                    solver_viewer.draw_board()
+
+                
                 
                 
     return False
