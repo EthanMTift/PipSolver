@@ -15,6 +15,34 @@ def validate_groups(grid, groups):
                 else:
                     continue
             
+            case '<sum':
+                temp_sum = 0
+                noneTiles = 0
+                for tile in group["tiles"]:
+                    if grid[tile[0]][tile[1]]['value'] == None:
+                        noneTiles += 1
+                        continue
+                    else:
+                        temp_sum += int(grid[tile[0]][tile[1]]['value'])
+                if int(group["rule_value"]) <= temp_sum and noneTiles == 0:
+                    return False
+                else:
+                    continue
+
+            case '>sum':
+                temp_sum = 0
+                noneTiles = 0
+                for tile in group["tiles"]:
+                    if grid[tile[0]][tile[1]]['value'] == None:
+                        noneTiles += 1
+                        continue
+                    else:
+                        temp_sum += int(grid[tile[0]][tile[1]]['value'])
+                if int(group["rule_value"]) >= temp_sum and noneTiles == 0:
+                    return False
+                else:
+                    continue
+            
 
             case '=':
                 temp_equal_set = set()

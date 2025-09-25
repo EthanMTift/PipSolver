@@ -40,7 +40,6 @@ class TileWidget(QWidget):
         painter = QPainter(self)
         size = min(self.width(), self.height())
 
-        # Draw background
         painter.fillRect(0, 0, size, size, QColor(self.bg_color))
 
         # Draw domino dots if value is set and >0
@@ -229,7 +228,7 @@ class BoardViewer(QDialog):
         self.finalized_groups = None
         self.finalize_board_button.clicked.connect(self.finalize_board)
 
-        # Create tiles (as QPushButton, to allow click for groups)
+        # Create tiles
         self.tiles = {}
         for i in range(self.rows):
             for j in range(self.cols):
@@ -273,7 +272,7 @@ class BoardViewer(QDialog):
     def finish_group(self):
         if not self.current_selection:
             return
-        rules = ['sum', '=', '!=', 'constant', '!constant', '<constant', '>constant']
+        rules = ['sum', '<sum', '>sum', '=', '!=', 'constant', '!constant', '<constant', '>constant']
         dialog = QInputDialog(self)
         dialog.setWindowTitle("Select rule")
         dialog.setLabelText("Rule:")
@@ -330,7 +329,7 @@ class BoardViewer(QDialog):
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            self.set_group_button.click()  # simulate button press
+            self.set_group_button.click()
         else:
             super().keyPressEvent(event)
     
@@ -386,7 +385,7 @@ class SolverViewer(QDialog):
 
         # Domino highlight color management
         self.domino_colors = self.get_color_pool()
-        self.active_domino_colors = {}  # key: frozenset of coords, value: color
+        self.active_domino_colors = {} 
 
         self.draw_board()
 
@@ -470,5 +469,5 @@ if __name__ == "__main__":
                     solver_viewer = SolverViewer(grid)
                     solver_viewer.exec_()
 
-    sys.exit(app.exec_())   # ✅ single global event loop
+    sys.exit(app.exec_())
 

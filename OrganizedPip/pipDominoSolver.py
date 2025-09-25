@@ -21,6 +21,8 @@ def solve_domino(grid, unused_dominos, groups, solver_viewer, solve_visual):
 
         # Try each unused domino
         for (a, b) in list(unused_dominos):
+            
+            
 
             # Orientations: both orders if a≠b, only one if a==b
             orientations = [(a, b), (b, a)] if a != b else [(a, b)]
