@@ -3,7 +3,9 @@ from pipEmptySpot import find_empty
 from pipValidateGroups import validate_groups
 from pipValidatePos import validate_pos
 
-def solve_domino(grid, unused_dominos, groups, solver_viewer, solve_visual):
+def solve_domino(grid, unused_dominos, groups, solver_viewer, solve_visual, solution_path):
+    if solution_path is None:
+        solution_path = []
     empty = find_empty(grid)
     if not empty:
         return True  # solved
@@ -41,11 +43,13 @@ def solve_domino(grid, unused_dominos, groups, solver_viewer, solve_visual):
                 if validate_groups(grid, groups) and validate_pos(grid, r, c, x) and validate_pos(grid, r2, c2, y):
                     
                     unused_dominos.remove((a, b))
+                    solution_path.append(((r, c, x), (r2, c2, y)))
 
-                    if solve_domino(grid, unused_dominos, groups, solver_viewer, solve_visual):
+                    if solve_domino(grid, unused_dominos, groups, solver_viewer, solve_visual, solution_path):
                         return True
 
                     unused_dominos.add((a, b))
+                    solution_path.pop()
 
                 # Backtrack
                 grid[r][c]['value'] = None

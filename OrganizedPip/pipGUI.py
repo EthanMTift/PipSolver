@@ -365,6 +365,13 @@ class SolverViewer(QDialog):
         self.solve_final_button.clicked.connect(self.start_solve_final)
         self.main_layout.addWidget(self.solve_final_button)
 
+        # Solve (solution_path) button
+        self.solve_replay_button = QPushButton("Solve (Replay)")
+        self.solve_replay_button.setMinimumHeight(40)
+        self.solve_replay_button.setStyleSheet("font-weight: bold; font-size: 16px; color: black;")
+        self.solve_replay_button.clicked.connect(self.start_solve_replay)
+        self.main_layout.addWidget(self.solve_replay_button)
+
         self.setLayout(self.main_layout)
 
         screen_rect = QApplication.primaryScreen().availableGeometry()
@@ -414,6 +421,34 @@ class SolverViewer(QDialog):
         normalized_dominos = set((min(a, b), max(a, b)) for a, b in dominos)
         solve_domino(self.grid, normalized_dominos, groups, self, solve_visual=False)
         self.draw_board()
+    # Solution path solve
+    def start_solve_replay(self):
+        normalized_dominos = set((min(a, b), max(a, b)) for a, b in dominos)
+        solution_path = []
+        solved = solve_domino(self.grid, normalized_dominos, groups, self, solve_visual=False, solution_path=solution_path)
+
+        if not solved:
+            print("No solution found")
+            return
+
+        # Clear the grid 
+        for row in self.grid:
+            for cell in row:
+                cell["value"] = None
+
+        self.active_domino_colors.clear()
+        self.domino_colors = self.get_color_pool()
+        self.draw_board()
+
+        # Replay solution path step by step
+        for (r1, c1, v1), (r2, c2, v2) in solution_path:
+            self.grid[r1][c1]["value"] = v1
+            self.grid[r2][c2]["value"] = v2
+            self.highlight_domino((r1, c1), (r2, c2))
+            self.draw_board()
+            QApplication.processEvents()
+            time.sleep(1)  
+
 
     def highlight_domino(self, coord1, coord2):
         domino_key = frozenset([coord1, coord2])
