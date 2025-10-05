@@ -9,29 +9,34 @@ import numpy as np
 
 def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_idx=(0,0)):
     """
-    Extract multi-character symbols from a patch using Tesseract.
-    Returns symbol string and confidence.
-    Applies fallback detection for '=' and '≠' using contours if OCR fails.
-    Draws debug rectangles around detected bars if debug_folder is provided.
-    Automatically reads tile_w and tile_h from the JSON file.
+    Extract symbols from patch using OCR with padding and sharp scaling.
+    PSM6 first, fallback to PSM10 if nothing/???.
     """
-    # --- Load tile size from JSON ---
+    
+
     with open(json_path, "r") as f:
         grid_data = json.load(f)
-    tile_w = grid_data["tile_width"]
-    tile_h = grid_data["tile_height"]
+    tile_w = grid_data.get("tile_width")
+    tile_h = grid_data.get("tile_height")
 
-    # --- Resize patch for OCR ---
-    scale_factor = 4
-    new_w = patch.shape[1] * scale_factor
-    new_h = patch.shape[0] * scale_factor
-
+    # --- Convert + threshold ---
     gray = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY)
     _, thresh = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY)
-    thresh_inv = cv2.bitwise_not(thresh)  # symbols white (255), background black (0)
+    thresh_inv = cv2.bitwise_not(thresh)  # symbols white, background black
+
+    # --- Add white padding around the patch ---
+    pad = int(0.35 * max(thresh_inv.shape))  # 30% of largest dimension
+    padded = cv2.copyMakeBorder(thresh_inv, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=0)
+
+    # --- Resize using nearest-neighbor for crispness ---
+    scale_factor = 4
+    padded_w = max(1, padded.shape[1] * scale_factor)
+    padded_h = max(1, padded.shape[0] * scale_factor)
+    new_w = patch.shape[1] * scale_factor
+    new_h = patch.shape[0] * scale_factor
+    padded_resized = cv2.resize(padded, (padded_w, padded_h), interpolation=cv2.INTER_NEAREST)
     gray_resized = cv2.resize(thresh_inv, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
 
-    # --- OCR ---
     tesseract_config = r'-c tessedit_char_whitelist=0123456789<> --psm 6'
     text = pytesseract.image_to_string(gray_resized, config=tesseract_config).strip()
 
@@ -39,15 +44,27 @@ def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_
     confs = [c for c in data['conf'] if c >= 0]
     avg_conf = int(sum(confs)/len(confs)) if confs else 0
 
-    # --- Save per-tile OCR debug ---
+
+    # --- Save debug ---
     if debug_folder:
         os.makedirs(debug_folder, exist_ok=True)
-        debug_path = os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_ocr.png")
-        cv2.imwrite(debug_path, gray_resized)
+        cv2.imwrite(os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_ocr_padded.png"), gray_resized)
 
-    # --- Return OCR result if confident ---
+    # --- If confident OCR ---
     if text and avg_conf >= conf_threshold:
         return text, avg_conf
+    
+    tesseract_config = r'-c tessedit_char_whitelist=8<> --psm 10'
+    text = pytesseract.image_to_string(padded_resized, config=tesseract_config).strip()
+
+    data = pytesseract.image_to_data(padded_resized, config=tesseract_config, output_type=pytesseract.Output.DICT)
+    confs = [c for c in data['conf'] if c >= 0]
+    avg_conf = int(sum(confs)/len(confs)) if confs else 0
+
+    # --- If confident OCR ---
+    if text and avg_conf >= conf_threshold:
+        return text, avg_conf
+
 
     # --- Fallback detection for '=' and '≠' using contours ---
     black_pixels = np.sum(thresh_inv == 255)
