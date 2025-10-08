@@ -1,11 +1,11 @@
 {
-    "image_path": "/Users/efantift/Desktop/superpipboard.png",
-    "image_width": 1322,
-    "image_height": 1338,
-    "rows": 8,
-    "cols": 7,
-    "tile_width": 96.28571428571429,
-    "tile_height": 96.5,
-    "anchor_x": 268,
-    "anchor_y": 48
+    "image_path": "/Users/efantift/Desktop/Screenshot 2025-10-08 at 12.40.00 PM.png",
+    "image_width": 1176,
+    "image_height": 1286,
+    "rows": 5,
+    "cols": 5,
+    "tile_width": 120.0,
+    "tile_height": 120.8,
+    "anchor_x": 250,
+    "anchor_y": 87
 }
