@@ -56,7 +56,7 @@ def validate_groups(grid, groups):
                     continue
 
 
-            case '!=':
+            case '≠':
                 temp_equal_set = set()
                 temp_none_count = 0
                 for tile in group["tiles"]:
