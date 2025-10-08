@@ -37,6 +37,23 @@ def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_
     padded_resized = cv2.resize(padded, (padded_w, padded_h), interpolation=cv2.INTER_NEAREST)
     gray_resized = cv2.resize(thresh_inv, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
 
+    tesseract_config = r'-c tessedit_char_whitelist=0123456789<> --psm 6'
+    text = pytesseract.image_to_string(gray_resized, config=tesseract_config).strip()
+
+    data = pytesseract.image_to_data(gray_resized, config=tesseract_config, output_type=pytesseract.Output.DICT)
+    confs = [c for c in data['conf'] if c >= 0]
+    avg_conf = int(sum(confs)/len(confs)) if confs else 0
+
+
+    # --- Save debug ---
+    if debug_folder:
+        os.makedirs(debug_folder, exist_ok=True)
+        cv2.imwrite(os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_ocr_padded.png"), gray_resized)
+
+    # --- If confident OCR ---
+    if text and avg_conf >= conf_threshold:
+        return text, avg_conf
+    
     tesseract_config = r'-c tessedit_char_whitelist=0123456789<> --psm 7'
     text = pytesseract.image_to_string(gray_resized, config=tesseract_config).strip()
 
