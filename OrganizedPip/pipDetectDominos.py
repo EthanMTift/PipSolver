@@ -33,7 +33,7 @@ def detect_dominos(img, domino_area, tile_w, tile_h, debug_out="domino_debug.png
 
     # --- SCALE-BASED THRESHOLD ---
     # A domino covers roughly 2 tiles
-    min_area = tile_w * tile_h * 1.8  # adjust factor if needed
+    min_area = tile_w * tile_h  # adjust factor if needed
     aspect_ratio_min = 1.5
     aspect_ratio_max = 2.5
 
