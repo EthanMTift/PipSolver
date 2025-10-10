@@ -75,6 +75,12 @@ def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_
     # Use processed_text instead of original text
     text = processed_text
 
+    for i, text in enumerate(data['text']):
+        text = text.strip()
+        conf = int(data['conf'][i])
+        if text != "" and conf >= 0:
+            print(f"Detected: '{text}' with confidence {conf}")
+
 
     # --- Save debug ---
     if debug_folder:
@@ -117,6 +123,22 @@ def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_
     # --- If confident OCR ---
     if text and avg_conf >= conf_threshold:
         return text, avg_conf
+    
+    tesseract_config = r'-c tessedit_char_whitelist=123456789<> --psm 7'
+    text = pytesseract.image_to_string(gray, config=tesseract_config).strip()
+
+    data = pytesseract.image_to_data(gray, config=tesseract_config, output_type=pytesseract.Output.DICT)
+    confs = [c for c in data['conf'] if c >= 0]
+    avg_conf = int(sum(confs)/len(confs)) if confs else 0
+
+    # --- Save debug ---
+    if debug_folder:
+        os.makedirs(debug_folder, exist_ok=True)
+        cv2.imwrite(os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_ocr_gray.png"), padded_resized)
+
+    # --- If confident OCR ---
+    if text and avg_conf >= conf_threshold:
+        return text, avg_conf
 
 
     # --- Fallback detection for '=' and '≠' using contours ---
@@ -152,6 +174,8 @@ def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_
         return "=", int(black_ratio*100)
     print(black_ratio)
     # If OCR failed and significant content remains → "≠"
+    if black_ratio < 1.0:
+        print(tile_idx)
     if black_ratio < .95:
         return "≠", int(black_ratio*100)
 

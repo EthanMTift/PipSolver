@@ -1,7 +1,7 @@
 import sys
 import cv2
 from PyQt5.QtWidgets import (
-    QApplication, QDialog, QWidget, QVBoxLayout, QLineEdit, QLabel, QPushButton, QGridLayout, QInputDialog
+    QApplication, QDialog, QFileDialog, QWidget, QVBoxLayout, QLineEdit, QLabel, QPushButton, QGridLayout, QInputDialog
 )
 from PyQt5.QtGui import QColor, QBrush, QPainter
 from PyQt5.QtCore import Qt
@@ -17,7 +17,9 @@ from pipSelectImage import select_file_qt
 from pipAlign import align
 from pipGroup import make_groups
 from pipDominoExtract import domino_extract
-
+from pipDetectDominos import detect_dominos
+import shutil
+import json
 
 DOT_RADIUS = 5
 
@@ -105,12 +107,13 @@ class GridSizeDialog(QDialog):
 
 # ------------------- SolverViewer -------------------
 class SolverViewer(QDialog):
-    def __init__(self, grid):
+    def __init__(self, grid, img_path=None):
         super().__init__()
         self.setWindowTitle("Solver Viewer")
         self.grid = grid
         self.rows = len(grid)
         self.cols = len(grid[0]) if self.rows > 0 else 0
+        self.img_path = img_path
 
         self.setStyleSheet("background-color: white;")
         self.main_layout = QVBoxLayout()
@@ -139,16 +142,37 @@ class SolverViewer(QDialog):
         self.solve_replay_button.clicked.connect(self.start_solve_replay)
         self.main_layout.addWidget(self.solve_replay_button)
 
+        # --- Save Setup button ---
+        self.save_button = QPushButton("Save Setup")
+        self.save_button.setMinimumHeight(40)
+        self.save_button.setStyleSheet("font-weight: bold; font-size: 16px; color: black;")
+        self.save_button.clicked.connect(self.save_setup)
+        self.main_layout.addWidget(self.save_button)
+
         self.setLayout(self.main_layout)
 
+        
+        # Compute tile size and window dimensions
         screen_rect = QApplication.primaryScreen().availableGeometry()
         max_width = screen_rect.width() * 0.9
         max_height = screen_rect.height() * 0.9
-        reserved_height = self.solve_button.minimumHeight() + self.solve_final_button.minimumHeight() + 20
+
+        num_buttons = 4  # Solve Visual, Solve Final, Solve Replay, Save Setup
+        button_height = 40
+        button_spacing = 10
+        reserved_height = num_buttons * button_height + (num_buttons - 1) * button_spacing
+
         available_height = max_height - reserved_height
+
         tile_width = max_width / self.cols
         tile_height = available_height / self.rows
         self.tile_size = int(min(tile_width, tile_height))
+
+        # Set fixed size of the dialog
+        dialog_width = int(self.tile_size * self.cols)
+        dialog_height = int(self.tile_size * self.rows + reserved_height + 20)  # extra padding
+        self.setFixedSize(dialog_width, dialog_height)
+        
 
         self.tiles = {}
         for i in range(self.rows):
@@ -178,11 +202,38 @@ class SolverViewer(QDialog):
                 self.tiles[(i, j)].update()
         QApplication.processEvents()
 
+    def show_original_image(self):
+        if not self.img_path or not os.path.exists(self.img_path):
+            print("Original image not found.")
+            return
+
+        from PyQt5.QtWidgets import QLabel, QScrollArea
+        from PyQt5.QtGui import QPixmap
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Original Board Image")
+        layout = QVBoxLayout(dialog)
+
+        scroll = QScrollArea(dialog)
+        layout.addWidget(scroll)
+
+        label = QLabel()
+        pixmap = QPixmap(self.img_path)
+        label.setPixmap(pixmap)
+        label.setScaledContents(True)
+        scroll.setWidget(label)
+        scroll.setWidgetResizable(True)
+
+        dialog.resize(min(pixmap.width(), 800), min(pixmap.height(), 600))
+        dialog.exec_()
+  
+
     # Visual solve
     def start_solve(self):
         normalized_dominos = set((min(a, b), max(a, b)) for a, b in dominos)
         solution_path = []
         solve_domino(self.grid, normalized_dominos, groups, self, solve_visual=True, solution_path=solution_path)
+        self.show_original_image()
 
     # Non-visual / final-only solve
     def start_solve_final(self):
@@ -190,6 +241,7 @@ class SolverViewer(QDialog):
         solution_path = []
         solve_domino(self.grid, normalized_dominos, groups, self, solve_visual=False, solution_path=solution_path)
         self.draw_board()
+        self.show_original_image()
     # Solution path solve
     def start_solve_replay(self):
         normalized_dominos = set((min(a, b), max(a, b)) for a, b in dominos)
@@ -217,6 +269,8 @@ class SolverViewer(QDialog):
             self.draw_board()
             QApplication.processEvents()
             time.sleep(1)  
+        
+        self.show_original_image()
 
 
     def highlight_domino(self, coord1, coord2):
@@ -242,6 +296,27 @@ class SolverViewer(QDialog):
             cell = self.grid[coord[0]][coord[1]]
             self.tiles[coord].set_bg_color("#FFFDD0" if cell["valid"] else "white")
 
+    # --- Save Setup ---
+    def save_setup(self):
+        import shutil
+        from datetime import datetime
+
+        # Extract date from filename
+        filename = os.path.basename(self.img_path)
+        try:
+            date_str = filename.split("Screenshot ")[1].split(" at")[0]
+        except IndexError:
+            date_str = datetime.now().strftime("%Y-%m-%d")
+
+        folder_path = os.path.join("saved_setups", date_str)
+        os.makedirs(folder_path, exist_ok=True)
+
+        shutil.copy(self.img_path, folder_path)
+        shutil.copy(JSON_PATH, folder_path)
+        shutil.copy(DOMINO_JSON_PATH, folder_path)
+
+        print(f"Setup saved to {folder_path}")
+
     def closeEvent(self, event):
         os._exit(0)
 
@@ -250,43 +325,85 @@ class SolverViewer(QDialog):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    img_path = select_file_qt()
-    img = cv2.imread(img_path)
+    # --- Ask user whether to load from folder or select image ---
+    use_saved, ok = QInputDialog.getItem(
+        None,
+        "Load Mode",
+        "Select input mode:",
+        ["Select Image", "Load Saved Setup Folder"],
+        0,
+        False
+    )
 
-    grid_size_dialog = GridSizeDialog()
-    if grid_size_dialog.exec_() == QDialog.Accepted:
-        rows, cols = grid_size_dialog.rows, grid_size_dialog.cols
-        grid = create_grid(rows, cols)
+    if not ok:
+        sys.exit(0)
 
-        dominos_data = align(img, rows, cols, OUT_PATH, DOMINO_JSON_PATH, JSON_PATH, img_path)
+    if use_saved == "Select Image":
+        img_path = select_file_qt()
+        img = cv2.imread(img_path)
 
-        groups, invalids = make_groups(img, JSON_PATH, SYMBOL_CONF_THRESHOLD=50, DEBUG_FOLDER=None)
-        print(groups)
-        print(invalids)
+        grid_size_dialog = GridSizeDialog()
+        if grid_size_dialog.exec_() == QDialog.Accepted:
+            rows, cols = grid_size_dialog.rows, grid_size_dialog.cols
+            grid = create_grid(rows, cols)
 
-        set_invalid(grid, invalids)
+            dominos_data = align(img, rows, cols, OUT_PATH, DOMINO_JSON_PATH, JSON_PATH, img_path)
 
-        dominos = domino_extract(dominos_data)
-
-        digitDict = countDigits(dominos)
-
-        badNumPicker(grid, groups, digitDict)
-
-        print(grid)
-        print(dominos)
-
-
-    
-
-
-
-        solver_viewer = SolverViewer(grid)
-        solver_viewer.exec_()
-
-
+    else:  # Load from saved folder
+        
+        folder_path = QFileDialog.getExistingDirectory(None, "Select Folder with Saved Setup")
+        if not folder_path or not os.path.isdir(folder_path):
+            print("Invalid folder selected. Exiting.")
+            sys.exit(1)
         
 
-                    
+        # Load base image
+        imgs_in_folder = [f for f in os.listdir(folder_path) if f.lower().endswith((".png", ".jpg", ".jpeg"))]
+        if not imgs_in_folder:
+            print("No image found in folder. Exiting.")
+            sys.exit(1)
+        img_path = os.path.join(folder_path, imgs_in_folder[0])
+        img = cv2.imread(img_path)
+
+        # Load JSON files
+        json_file = os.path.join(folder_path, os.path.basename(JSON_PATH))
+        domino_json_file = os.path.join(folder_path, os.path.basename(DOMINO_JSON_PATH))
+        if not os.path.exists(json_file) or not os.path.exists(domino_json_file):
+            print("Required JSON files not found in folder. Exiting.")
+            sys.exit(1)
+
+        # Read grid info from JSON
+        with open(json_file) as f:
+            grid_data = json.load(f)
+        rows, cols = grid_data["rows"], grid_data["cols"]
+        grid = create_grid(rows, cols)
+
+        # Read domino area coordinates from domino JSON
+        with open(domino_json_file) as f:
+            domino_area = json.load(f)
+
+        # Detect dominos using the loaded image and saved domino area
+        tile_w = grid_data["tile_width"]
+        tile_h = grid_data["tile_height"]
+        dominos_data = detect_dominos(img, domino_area, tile_w, tile_h)
+
+    # --- Continue with normal processing ---
+    groups, invalids = make_groups(img, JSON_PATH, SYMBOL_CONF_THRESHOLD=50, DEBUG_FOLDER=None)
+    print(groups)
+    print(invalids)
+
+    set_invalid(grid, invalids)
+
+    dominos = domino_extract(dominos_data)
+
+    digitDict = countDigits(dominos)
+
+    badNumPicker(grid, groups, digitDict)
+
+    print(grid)
+    print(dominos)
+
+    solver_viewer = SolverViewer(grid, img_path)
+    solver_viewer.exec_()
 
     sys.exit(app.exec_())
-
