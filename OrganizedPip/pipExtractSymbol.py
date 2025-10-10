@@ -7,6 +7,7 @@ import numpy as np
 
 
 
+
 def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_idx=(0,0)):
     """
     Extract symbols from patch using OCR with padding and sharp scaling.
@@ -21,11 +22,29 @@ def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_
 
     # --- Convert + threshold ---
     gray = cv2.cvtColor(patch, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY)
+
+    # --- Save debug ---
+    if debug_folder:
+        os.makedirs(debug_folder, exist_ok=True)
+        cv2.imwrite(os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_gray.png"), gray)
+
+
+    _, thresh = cv2.threshold(gray, 220, 255, cv2.THRESH_BINARY)
+
+    # --- Save debug ---
+    if debug_folder:
+        os.makedirs(debug_folder, exist_ok=True)
+        cv2.imwrite(os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_thresh.png"), thresh)
+
     thresh_inv = cv2.bitwise_not(thresh)  # symbols white, background black
 
+    # --- Save debug ---
+    if debug_folder:
+        os.makedirs(debug_folder, exist_ok=True)
+        cv2.imwrite(os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_thresh_inv.png"), thresh_inv)
+
     # --- Add white padding around the patch ---
-    pad = int(0.35 * max(thresh_inv.shape))  # 30% of largest dimension
+    pad = int(0.35 * max(thresh_inv.shape))  # 35% of largest dimension
     padded = cv2.copyMakeBorder(thresh_inv, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=0)
 
     # --- Resize using nearest-neighbor for crispness ---
@@ -44,11 +63,23 @@ def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_
     confs = [c for c in data['conf'] if c >= 0]
     avg_conf = int(sum(confs)/len(confs)) if confs else 0
 
+    # --- Post-process: force '3' → '5' if confidence < 70 ---
+    processed_text = ""
+    for i, char in enumerate(data['text']):
+        if char.strip():
+            conf = int(data['conf'][i])
+            if char == '3' and conf < 70:
+                char = '5'
+            processed_text += char
+
+    # Use processed_text instead of original text
+    text = processed_text
+
 
     # --- Save debug ---
     if debug_folder:
         os.makedirs(debug_folder, exist_ok=True)
-        cv2.imwrite(os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_ocr_padded.png"), gray_resized)
+        cv2.imwrite(os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_ocr_6.png"), gray_resized)
 
     # --- If confident OCR ---
     if text and avg_conf >= conf_threshold:
@@ -65,7 +96,7 @@ def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_
     # --- Save debug ---
     if debug_folder:
         os.makedirs(debug_folder, exist_ok=True)
-        cv2.imwrite(os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_ocr_padded.png"), gray_resized)
+        cv2.imwrite(os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_ocr_7.png"), gray_resized)
 
     # --- If confident OCR ---
     if text and avg_conf >= conf_threshold:
@@ -77,6 +108,11 @@ def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_
     data = pytesseract.image_to_data(padded_resized, config=tesseract_config, output_type=pytesseract.Output.DICT)
     confs = [c for c in data['conf'] if c >= 0]
     avg_conf = int(sum(confs)/len(confs)) if confs else 0
+
+    # --- Save debug ---
+    if debug_folder:
+        os.makedirs(debug_folder, exist_ok=True)
+        cv2.imwrite(os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_ocr_padded.png"), padded_resized)
 
     # --- If confident OCR ---
     if text and avg_conf >= conf_threshold:

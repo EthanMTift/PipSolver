@@ -2,6 +2,8 @@ import cv2
 import json
 from pipExtractSymbol import extract_symbol
 
+DEBUG_FOLDER = 'symbol_debug'
+
 def extract_tile_data(image, backgroundless_image, json_path, symbol_conf_threshold=50, debug=False, debug_folder=None):
     """
     Extract color and bottom-right symbol (with confidence) for each tile.
@@ -63,7 +65,7 @@ def extract_tile_data(image, backgroundless_image, json_path, symbol_conf_thresh
 
             # --- Detect symbol ---
             symbol, conf = extract_symbol(
-                patch, json_path, conf_threshold=symbol_conf_threshold, debug_folder=debug_folder, tile_idx=(r,c)
+                patch, json_path, conf_threshold=symbol_conf_threshold, debug_folder=DEBUG_FOLDER, tile_idx=(r,c)
             )
 
             # --- Debug visualization ---

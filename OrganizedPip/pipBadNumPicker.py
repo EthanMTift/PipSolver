@@ -12,17 +12,26 @@ def badNumPicker(grid, groups, digitDict):
                 for tile in group['tiles']:
                     if tileMinimum > 0:
                         badMin = [x for x in nums if x<tileMinimum]
-                        grid[tile[0]][tile[1]]['badNums'].append(badMin)
+                        if len(badMin) > 1:
+                            grid[tile[0]][tile[1]]['badNums'].extend(badMin)
+                        else:
+                            grid[tile[0]][tile[1]]['badNums'].append(badMin[0])
                     if tileMaximum < 6:
                         badMax = [x for x in nums if x>tileMaximum]
-                        grid[tile[0]][tile[1]]['badNums'].append(badMax)
+                        if len(badMax) > 1:
+                            grid[tile[0]][tile[1]]['badNums'].extend(badMax)
+                        else:
+                            grid[tile[0]][tile[1]]['badNums'].append(badMax[0])
             
             case '>sum':
                 tileMinimum = ((group['rule_value'] + 1) - (6 * (len(group['tiles']) - 1)))
                 for tile in group['tiles']:
                     if tileMinimum > 0:
                         badMin = [x for x in nums if x<tileMinimum]
-                        grid[tile[0]][tile[1]]['badNums'].append(badMin)
+                        if len(badMin) > 1:
+                            grid[tile[0]][tile[1]]['badNums'].extend(badMin)
+                        else:
+                            grid[tile[0]][tile[1]]['badNums'].append(badMin[0])
 
             
             case '<sum':
@@ -30,7 +39,10 @@ def badNumPicker(grid, groups, digitDict):
                 for tile in group['tiles']:
                     if tileMaximum < 6:
                         badMax = [x for x in nums if x>tileMaximum]
-                        grid[tile[0]][tile[1]]['badNums'].append(badMax)
+                        if len(badMax) > 1:
+                            grid[tile[0]][tile[1]]['badNums'].extend(badMax)
+                        else:
+                            grid[tile[0]][tile[1]]['badNums'].append(badMax[0])
             
             
             # Look at how many spaces are in each = group, and discount numbers which occur in the dominos less than that amount of spaces
