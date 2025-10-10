@@ -75,12 +75,6 @@ def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_
     # Use processed_text instead of original text
     text = processed_text
 
-    for i, text in enumerate(data['text']):
-        text = text.strip()
-        conf = int(data['conf'][i])
-        if text != "" and conf >= 0:
-            print(f"Detected: '{text}' with confidence {conf}")
-
 
     # --- Save debug ---
     if debug_folder:

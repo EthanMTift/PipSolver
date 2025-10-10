@@ -376,6 +376,8 @@ if __name__ == "__main__":
         with open(json_file) as f:
             grid_data = json.load(f)
         rows, cols = grid_data["rows"], grid_data["cols"]
+        print(rows)
+        print(cols)
         grid = create_grid(rows, cols)
 
         # Read domino area coordinates from domino JSON
@@ -388,9 +390,11 @@ if __name__ == "__main__":
         dominos_data = detect_dominos(img, domino_area, tile_w, tile_h)
 
     # --- Continue with normal processing ---
-    groups, invalids = make_groups(img, JSON_PATH, SYMBOL_CONF_THRESHOLD=50, DEBUG_FOLDER=None)
-    print(groups)
-    print(invalids)
+    if use_saved == "Select Image":
+        groups, invalids = make_groups(img, JSON_PATH, SYMBOL_CONF_THRESHOLD=50, DEBUG_FOLDER=None)
+    else:
+        groups, invalids = make_groups(img, json_file, SYMBOL_CONF_THRESHOLD=50, DEBUG_FOLDER=None)
+    
 
     set_invalid(grid, invalids)
 
