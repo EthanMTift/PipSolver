@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (
     QApplication, QDialog, QFileDialog, QWidget, QVBoxLayout, QLineEdit, QLabel, QPushButton, QGridLayout, QInputDialog
 )
 from PyQt5.QtGui import QColor, QBrush, QPainter
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 import random
 import time
 import os
@@ -71,7 +71,62 @@ class TileWidget(QWidget):
             painter.setPen(Qt.black)
             painter.drawRect(0, 0, size-1, size-1)
         
+class OverlayWidget(QWidget):
+    """Transparent widget on top of the grid for drawing boxes."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self.setAttribute(Qt.WA_NoSystemBackground)
+        self.setStyleSheet("background: transparent;")
+        self.rectangles = []  # list of ((row1, col1), (row2, col2)) tuples
         
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not hasattr(self.parent(), 'tiles'):
+            return
+
+        painter = QPainter(self)
+        pen = painter.pen()
+        pen.setWidth(6)
+        pen.setColor(Qt.black)
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+
+        for (r1, c1), (r2, c2) in self.rectangles:
+            tile1 = self.parent().tiles.get((r1, c1))
+            tile2 = self.parent().tiles.get((r2, c2))
+            if tile1 and tile2:
+                # Get centers
+                cx1, cy1 = tile1.x() + tile1.width() // 2, tile1.y() + tile1.height() // 2
+                cx2, cy2 = tile2.x() + tile2.width() // 2, tile2.y() + tile2.height() // 2
+
+                # Expand to half tile width/height on all sides
+                left = min(cx1, cx2) - tile1.width() // 2 + int((tile1.width() / 50))
+                top = min(cy1, cy2) - tile1.height() // 2 + int((tile1.height() / 50))
+                right = max(cx1, cx2) + tile1.width() // 2 - int((tile1.width() / 50))
+                bottom = max(cy1, cy2) + tile1.height() // 2 - int((tile1.height() / 50))
+
+                painter.drawRect(left, top, right - left, bottom - top)
+
+
+    # ------------------- Overlay Methods -------------------
+    def add_rectangle(self, coord1, coord2):
+        self.rectangles.append((coord1, coord2))
+        self.update()
+
+    def clear_rectangle(self, coord1, coord2):
+        """
+        Clears the rectangle connecting the two given coordinates.
+        Only removes the rectangle that matches these coords.
+        """
+        # Keep only rectangles that don't match the given pair (order doesn't matter)
+        self.rectangles = [
+            rect for rect in self.rectangles
+            if set(rect) != {coord1, coord2}
+        ]
+        self.update()  # redraw overlay immediately
+
 
 
 class GridSizeDialog(QDialog):
@@ -126,6 +181,7 @@ class SolverViewer(QDialog):
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
         self.main_layout.addLayout(self.grid_layout)
+        self.setLayout(self.main_layout)
 
         # Solve (Visual) button
         self.solve_button = QPushButton("Solve (Visual)")
@@ -155,9 +211,6 @@ class SolverViewer(QDialog):
         self.save_button.clicked.connect(self.save_setup)
         self.main_layout.addWidget(self.save_button)
 
-        self.setLayout(self.main_layout)
-
-        
         # Compute tile size and window dimensions
         screen_rect = QApplication.primaryScreen().availableGeometry()
         max_width = screen_rect.width() * 0.9
@@ -169,7 +222,6 @@ class SolverViewer(QDialog):
         reserved_height = num_buttons * button_height + (num_buttons - 1) * button_spacing
 
         available_height = max_height - reserved_height
-
         tile_width = max_width / self.cols
         tile_height = available_height / self.rows
         self.tile_size = int(min(tile_width, tile_height))
@@ -178,8 +230,8 @@ class SolverViewer(QDialog):
         dialog_width = int(self.tile_size * self.cols)
         dialog_height = int(self.tile_size * self.rows + reserved_height + 20)  # extra padding
         self.setFixedSize(dialog_width, dialog_height)
-        
 
+        # Create tiles
         self.tiles = {}
         for i in range(self.rows):
             for j in range(self.cols):
@@ -187,11 +239,20 @@ class SolverViewer(QDialog):
                 self.grid_layout.addWidget(tile, i, j)
                 self.tiles[(i, j)] = tile
 
+        # --- Overlay ---
+        self.overlay_widget = OverlayWidget(self)
+        self.overlay_widget.setGeometry(
+            0, 0, self.tile_size * self.cols, self.tile_size * (self.rows + 1)
+        )
+        self.overlay_widget.raise_()
+        self.overlay_widget.show()
+
         # Domino highlight color management
         self.domino_colors = self.get_color_pool()
-        self.active_domino_colors = {} 
+        self.active_domino_colors = {}
 
         self.draw_board()
+
 
     def get_color_pool(self):
         colors = [
@@ -271,12 +332,14 @@ class SolverViewer(QDialog):
         for (r1, c1, v1), (r2, c2, v2) in solution_path:
             self.grid[r1][c1]["value"] = v1
             self.grid[r2][c2]["value"] = v2
-            self.highlight_domino((r1, c1), (r2, c2))
+            self.overlay_widget.add_rectangle((r1, c1), (r2, c2))
             self.draw_board()
             QApplication.processEvents()
             time.sleep(1)  
         
         self.show_original_image()
+        
+
 
 
     def highlight_domino(self, coord1, coord2):

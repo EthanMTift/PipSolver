@@ -36,7 +36,7 @@ def solve_domino(grid, unused_dominos, groups, solver_viewer, solve_visual, solu
             
                 grid[r][c]['value'] = x
                 grid[r2][c2]['value'] = y
-                solver_viewer.highlight_domino((r, c), (r2, c2))
+                solver_viewer.overlay_widget.add_rectangle((r, c), (r2, c2))
                 if(solve_visual):
                     solver_viewer.draw_board()
                 
@@ -54,7 +54,7 @@ def solve_domino(grid, unused_dominos, groups, solver_viewer, solve_visual, solu
                 # Backtrack
                 grid[r][c]['value'] = None
                 grid[r2][c2]['value'] = None
-                solver_viewer.clear_domino_highlight((r, c), (r2, c2))
+                solver_viewer.overlay_widget.clear_rectangle((r, c), (r2, c2))
                 if(solve_visual):
                     solver_viewer.draw_board()
 
