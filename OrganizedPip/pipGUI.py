@@ -48,6 +48,10 @@ class TileWidget(QWidget):
         self.bg_color = color
         self.update()
 
+    def set_overlay_symbol(self, symbol):
+        self.symbol_overlay = symbol
+        self.update()
+
     def paintEvent(self, event):
         painter = QPainter(self)
         size = min(self.width(), self.height())
@@ -70,6 +74,18 @@ class TileWidget(QWidget):
             painter.setBrush(Qt.NoBrush)
             painter.setPen(Qt.black)
             painter.drawRect(0, 0, size-1, size-1)
+        
+        # Draw overlay symbol
+        if self.symbol_overlay:
+            painter.setPen(Qt.black)
+            font = painter.font()
+            font.setPointSize(max(8, size // 6))  # small font relative to tile
+            painter.setFont(font)
+            margin = size // 8  # inset a bit from top-right
+            painter.drawText(
+                size - margin, margin + font.pointSize(),  # top-right corner
+                self.symbol_overlay
+            )
         
 class OverlayWidget(QWidget):
     """Transparent widget on top of the grid for drawing boxes."""
@@ -165,13 +181,14 @@ class GridSizeDialog(QDialog):
 
 # ------------------- SolverViewer -------------------
 class SolverViewer(QDialog):
-    def __init__(self, grid, img_path=None):
+    def __init__(self, grid, groups, img_path=None):
         super().__init__()
         self.setWindowTitle("Solver Viewer")
         self.grid = grid
         self.rows = len(grid)
         self.cols = len(grid[0]) if self.rows > 0 else 0
         self.img_path = img_path
+        self.groups = groups
 
         self.setStyleSheet("background-color: white;")
         self.main_layout = QVBoxLayout()
@@ -250,6 +267,7 @@ class SolverViewer(QDialog):
         # Domino highlight color management
         self.domino_colors = self.get_color_pool()
         self.active_domino_colors = {}
+        self.highlight_tiles(self.groups)
 
         self.draw_board()
 
@@ -342,28 +360,14 @@ class SolverViewer(QDialog):
 
 
 
-    def highlight_domino(self, coord1, coord2):
-        domino_key = frozenset([coord1, coord2])
-        if domino_key in self.active_domino_colors:
-            color = self.active_domino_colors[domino_key]
-        else:
-            if self.domino_colors:
-                color = self.domino_colors.pop(0)
-            else:
-                color = "#FF00FF"
-            self.active_domino_colors[domino_key] = color
+    def highlight_tiles(self, groups):
+        for group in groups:
+            r, g, b = group["color"]  # unpack the tuple
+            # Swap R and B because cv does bgr
+            hex_color = f"#{int(b):02X}{int(g):02X}{int(r):02X}"
+            for tile in group["tiles"]:
+                self.tiles[tile].set_bg_color(hex_color)
 
-        for coord in [coord1, coord2]:
-            self.tiles[coord].set_bg_color(color)
-
-    def clear_domino_highlight(self, coord1, coord2):
-        domino_key = frozenset([coord1, coord2])
-        if domino_key in self.active_domino_colors:
-            color = self.active_domino_colors.pop(domino_key)
-            self.domino_colors.append(color)
-        for coord in [coord1, coord2]:
-            cell = self.grid[coord[0]][coord[1]]
-            self.tiles[coord].set_bg_color("#FFFDD0" if cell["valid"] else "white")
 
     # --- Save Setup ---
     def save_setup(self):
@@ -445,8 +449,6 @@ if __name__ == "__main__":
         with open(json_file) as f:
             grid_data = json.load(f)
         rows, cols = grid_data["rows"], grid_data["cols"]
-        print(rows)
-        print(cols)
         grid = create_grid(rows, cols)
 
         # Read domino area coordinates from domino JSON
@@ -475,8 +477,9 @@ if __name__ == "__main__":
 
     print(grid)
     print(dominos)
+    
 
-    solver_viewer = SolverViewer(grid, img_path)
+    solver_viewer = SolverViewer(grid, groups, img_path)
     solver_viewer.exec_()
 
     sys.exit(app.exec_())

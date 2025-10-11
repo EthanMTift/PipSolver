@@ -76,7 +76,8 @@ def build_groups(grid_data):
             groups.append({
                 "tiles": group_tiles,
                 "rule": rule,
-                "rule_value": rule_value
+                "rule_value": rule_value,
+                "color": color
             })
 
     return groups
