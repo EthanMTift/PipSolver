@@ -70,6 +70,9 @@ class TileWidget(QWidget):
             painter.setBrush(Qt.NoBrush)
             painter.setPen(Qt.black)
             painter.drawRect(0, 0, size-1, size-1)
+        
+        
+
 
 class GridSizeDialog(QDialog):
     def __init__(self):
@@ -118,7 +121,10 @@ class SolverViewer(QDialog):
         self.setStyleSheet("background-color: white;")
         self.main_layout = QVBoxLayout()
         self.grid_layout = QGridLayout()
+        self.grid_layout.setContentsMargins(0, 0, 0, 0)
         self.grid_layout.setSpacing(0)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
         self.main_layout.addLayout(self.grid_layout)
 
         # Solve (Visual) button
