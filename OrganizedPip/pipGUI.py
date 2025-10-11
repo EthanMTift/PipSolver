@@ -43,6 +43,7 @@ class TileWidget(QWidget):
         self.cell = cell
         self.setFixedSize(size, size)
         self.bg_color = "#FFFDD0" if self.cell["valid"] else "white"
+        self.symbol_overlay = None
 
     def set_bg_color(self, color):
         self.bg_color = color
@@ -79,11 +80,12 @@ class TileWidget(QWidget):
         if self.symbol_overlay:
             painter.setPen(Qt.black)
             font = painter.font()
-            font.setPointSize(max(8, size // 6))  # small font relative to tile
+            font.setPointSize(max(5, size // 10))  # small font relative to tile
             painter.setFont(font)
-            margin = size // 8  # inset a bit from top-right
+            margin_x = size // 5  # inset from right
+            margin_y = size // 16  # inset from top (raised a bit)
             painter.drawText(
-                size - margin, margin + font.pointSize(),  # top-right corner
+                size - margin_x, margin_y + font.pointSize(),  # top-right corner, slightly raised
                 self.symbol_overlay
             )
         
@@ -268,6 +270,7 @@ class SolverViewer(QDialog):
         self.domino_colors = self.get_color_pool()
         self.active_domino_colors = {}
         self.highlight_tiles(self.groups)
+        self.add_group_symbols(self.groups)
 
         self.draw_board()
 
@@ -367,6 +370,35 @@ class SolverViewer(QDialog):
             hex_color = f"#{int(b):02X}{int(g):02X}{int(r):02X}"
             for tile in group["tiles"]:
                 self.tiles[tile].set_bg_color(hex_color)
+
+    def add_group_symbols(self, groups):
+        """
+        Goes through all groups and adds a small "*" to the top-right
+        of each tile in the group. You can replace "*" with actual symbol logic later.
+        """
+        for group in groups:
+            match group["rule"]:
+               
+                case '=':
+                    symbol = '='
+                
+                case '≠':
+                    symbol = '≠'
+                
+                case 'sum':
+                    symbol = str(group["rule_value"])
+
+                case '<sum':
+                    symbol = "<" + str(group["rule_value"])
+
+                case '>sum':
+                    symbol = ">" + str(group["rule_value"])
+                
+                case _:
+                    print("yo")
+            
+            for tile_coords in group["tiles"]:
+                self.tiles[tile_coords].set_overlay_symbol(symbol)
 
 
     # --- Save Setup ---
