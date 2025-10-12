@@ -20,6 +20,7 @@ from pipDominoExtract import domino_extract
 from pipDetectDominos import detect_dominos
 import shutil
 import json
+from datetime import datetime
 
 DOT_RADIUS = 5
 
@@ -390,22 +391,21 @@ class SolverViewer(QDialog):
 
     # --- Save Setup ---
     def save_setup(self):
-        import shutil
-        from datetime import datetime
-
-        # Extract date from filename
-        filename = os.path.basename(self.img_path)
+        # Get the creation/modification time of the screenshot
         try:
-            date_str = filename.split("Screenshot ")[1].split(" at")[0]
-        except IndexError:
+            timestamp = os.path.getmtime(self.img_path)  # modification time
+            # On Windows, you could also use os.path.getctime(self.img_path)
+            date_str = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d")
+        except Exception:
             date_str = datetime.now().strftime("%Y-%m-%d")
 
         folder_path = os.path.join("saved_setups", date_str)
         os.makedirs(folder_path, exist_ok=True)
 
-        shutil.copy(self.img_path, folder_path)
-        shutil.copy(JSON_PATH, folder_path)
-        shutil.copy(DOMINO_JSON_PATH, folder_path)
+        # Copy files, overwriting if they exist
+        shutil.copy2(self.img_path, folder_path)
+        shutil.copy2(JSON_PATH, folder_path)
+        shutil.copy2(DOMINO_JSON_PATH, folder_path)
 
         print(f"Setup saved to {folder_path}")
 

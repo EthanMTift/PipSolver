@@ -11,6 +11,7 @@ def make_groups(img, JSON_PATH, SYMBOL_CONF_THRESHOLD, DEBUG_FOLDER):
     
     tile_w = int(grid_data["tile_width"])
     tile_h = int(grid_data["tile_height"])
+
     
 
     no_background = remove_white_background(img, tile_w, tile_h)

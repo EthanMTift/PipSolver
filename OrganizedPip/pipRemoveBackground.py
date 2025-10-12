@@ -49,7 +49,8 @@ def remove_white_background(img, tile_w, tile_h, tol=200):
 
                 # If the region is mostly white, flood fill it black
                 white_ratio = np.mean(region == 255)
-                if white_ratio > 0.95:  # almost entirely white
+                
+                if white_ratio > 0.3:  # almost entirely white
                     cv2.floodFill(flood_mask, floodfill_mask, (x + sub_w // 2, y + sub_h // 2), 0)
 
     # Replace background pixels in original image with black
