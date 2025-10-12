@@ -3,4 +3,6 @@ __pycache__/
 *.pyc
 *.png
 *.json
+OrganizedPip/symbol_debug
+OrganizedPip/saved_setups
 

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-def remove_white_background(img, tile_w, tile_h, tol=240):
+def remove_white_background(img, tile_w, tile_h, tol=200):
     """
     Turn the white-ish background of an image to black,
     without affecting isolated white symbols. Also fills any
@@ -55,5 +55,7 @@ def remove_white_background(img, tile_w, tile_h, tol=240):
     # Replace background pixels in original image with black
     result = img.copy()
     result[flood_mask == 0] = [0, 0, 0]
+
+    cv2.imwrite("backgroundless.png", result)
 
     return result
