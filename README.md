@@ -5,8 +5,7 @@ This is a **Python** project that solves the New York Times Game "Pips"
 Upon starting the program, it will prompt the user for a file. Please give it an image of the Pips board you would like to solve.
 Make sure that the image includes all the dominos as well. You will also need to specify the grid size (row x col). Input as two numbers with a space between them.
 
-The program will prompt you to select the left, right, top and bottom of the board. Click precisely on the edges for best results
-**NOTE**: There is no need for these clicks to be center, as long as they are on the extremes of the board, it will work.
+The program will prompt you to select the top left and bottom right of a rectangle that envelops the board. Make sure that the rectangle is bigger than the board and does not include the domino's or anything else for the best results.
 
 The program will then prompt you to select the domino area. Click the top left and bottom right of the rectangle that covers all the dominos.
 
