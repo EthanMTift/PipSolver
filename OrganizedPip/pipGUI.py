@@ -266,23 +266,11 @@ class SolverViewer(QDialog):
         self.overlay_widget.raise_()
         self.overlay_widget.show()
 
-        # Domino highlight color management
-        self.domino_colors = self.get_color_pool()
-        self.active_domino_colors = {}
         self.highlight_tiles(self.groups)
         self.add_group_symbols(self.groups)
 
         self.draw_board()
 
-
-    def get_color_pool(self):
-        colors = [
-            "#FF0000", "#00FF00", "#0000FF", "#FF00FF", "#00FFFF", "#800000", "#008000",
-            "#000080", "#808000", "#800080", "#008080", "#C0C0C0", "#FFA500", "#A52A2A",
-            "#FFC0CB", "#ADD8E6", "#90EE90", "#D3D3D3", "#FFA07A", "#20B2AA",
-            "#87CEFA", "#778899", "#B0C4DE", "#FF1493"
-        ]
-        return colors
 
     def draw_board(self):
         for i in range(self.rows):
@@ -345,8 +333,7 @@ class SolverViewer(QDialog):
             for cell in row:
                 cell["value"] = None
 
-        self.active_domino_colors.clear()
-        self.domino_colors = self.get_color_pool()
+        
         self.draw_board()
 
         # Replay solution path step by step
@@ -365,9 +352,9 @@ class SolverViewer(QDialog):
 
     def highlight_tiles(self, groups):
         for group in groups:
-            r, g, b = group["color"]  # unpack the tuple
+            b, g, r = group["color"]  # unpack the tuple
             # Swap R and B because cv does bgr
-            hex_color = f"#{int(b):02X}{int(g):02X}{int(r):02X}"
+            hex_color = f"#{int(r):02X}{int(g):02X}{int(b):02X}"
             for tile in group["tiles"]:
                 self.tiles[tile].set_bg_color(hex_color)
 
