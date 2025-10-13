@@ -497,6 +497,7 @@ if __name__ == "__main__":
     print(grid)
     print(dominos)
     
+    
 
     solver_viewer = SolverViewer(grid, groups, img_path)
     solver_viewer.exec_()

@@ -80,9 +80,11 @@ def extract_symbol(patch, json_path, conf_threshold=50, debug_folder=None, tile_
     if debug_folder:
         os.makedirs(debug_folder, exist_ok=True)
         cv2.imwrite(os.path.join(debug_folder, f"tile_{tile_idx[0]}_{tile_idx[1]}_ocr_6.png"), gray_resized)
-
+    
     # --- If confident OCR ---
     if text and avg_conf >= conf_threshold:
+        return text, avg_conf
+    elif (text == ">1" or text == "<1") and avg_conf >= 30:
         return text, avg_conf
     
     tesseract_config = r'-c tessedit_char_whitelist=0123456789<> --psm 7'
