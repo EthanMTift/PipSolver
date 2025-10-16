@@ -323,6 +323,7 @@ class SolverViewer(QDialog):
     def start_solve_replay(self):
         normalized_dominos = set((min(a, b), max(a, b)) for a, b in dominos)
         solution_path = []
+        start = time.time()
         solved = solve_domino(self.grid, normalized_dominos, groups, self, solve_visual=False, solution_path=solution_path)
 
         if not solved:
@@ -347,6 +348,8 @@ class SolverViewer(QDialog):
             time.sleep(1)  
         
         self.show_original_image()
+        end = time.time()
+        print(f"Runtime: {end - start:.3f} seconds")
         
 
 
